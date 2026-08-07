@@ -26,19 +26,22 @@ Table expected (created via migration, not here):
     CREATE INDEX idx_local_addresses_geom ON local_addresses USING GIST (geom);
     CREATE INDEX idx_local_addresses_street_trgm ON local_addresses USING GIN (street gin_trgm_ops);
 """
-import asyncpg
+import psycopg2
+from psycopg2 import pool
 
 from app.config import get_settings
 from app.services.providers import GeocodeResult
 
 settings = get_settings()
-_pool: asyncpg.Pool | None = None
+_pool = None
 
 
-async def get_pool() -> asyncpg.Pool:
+def get_pool():
     global _pool
     if _pool is None:
-        _pool = await asyncpg.create_pool(dsn=settings.SUPABASE_DB_URL, min_size=1, max_size=10)
+        # For Supabase, we need to use the connection string
+        conn_str = settings.SUPABASE_DB_URL or f"postgresql://postgres:@db.{settings.SUPABASE_URL.split('//')[1]}:5432/postgres"
+        _pool = pool.ThreadedConnectionPool(minconn=1, maxconn=10, dsn=conn_str)
     return _pool
 
 
@@ -49,24 +52,32 @@ async def lookup_local(address: str, similarity_threshold: float = 0.4) -> Geoco
     clears the similarity threshold, so the caller can fall back to the
     paid provider chain.
     """
-    pool = await get_pool()
-    query = """
-        SELECT number, street, city, region, postcode,
-               ST_Y(geom) AS lat, ST_X(geom) AS lng,
-               similarity(street || ' ' || number, $1) AS score
-        FROM local_addresses
-        WHERE (street || ' ' || number) % $1
-        ORDER BY score DESC
-        LIMIT 1
-    """
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(query, address)
-
-    if row is None or row["score"] < similarity_threshold:
+    try:
+        pg_pool = get_pool()
+        conn = pg_pool.getconn()
+        try:
+            query = """
+                SELECT number, street, city, region, postcode,
+                       ST_Y(geom) AS lat, ST_X(geom) AS lng,
+                       similarity(street || ' ' || number, %s) AS score
+                FROM local_addresses
+                WHERE (street || ' ' || number) %% %s
+                ORDER BY score DESC
+                LIMIT 1
+            """
+            with conn.cursor() as cur:
+                cur.execute(query, (address, address))
+                row = cur.fetchone()
+        finally:
+            pg_pool.putconn(conn)
+    except psycopg2.Error:
         return None
 
-    formatted = f"{row['number']} {row['street']}, {row['city']}, {row['region']} {row['postcode']}"
+    if row is None or row[6] < similarity_threshold:
+        return None
+
+    formatted = f"{row[0]} {row[1]}, {row[2]}, {row[3]} {row[4]}"
     return GeocodeResult(
-        lat=row["lat"], lng=row["lng"], formatted=formatted,
-        confidence=int(row["score"] * 100), provider="local_openaddresses",
+        lat=row[5], lng=row[6] if len(row) > 6 else row[6], formatted=formatted,
+        confidence=int(row[6] * 100) if row[6] else 0, provider="local_openaddresses",
     )
