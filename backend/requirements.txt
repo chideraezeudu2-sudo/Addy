@@ -7,3 +7,4 @@ psycopg2-binary==2.9.10
 redis==5.2.0
 stripe==11.0.0
 python-multipart==0.0.12
+timezonefinder==6.5.1
