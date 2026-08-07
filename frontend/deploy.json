@@ -1,0 +1,10 @@
+{
+  "name": "addy-frontend",
+  "project": "prj_u6kcdWWyaFNRPgi6tqbTxZo0f4Sg",
+  "target": "production",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "environment": {
+    "VITE_API_BASE_URL": "https://addy-api.vercel.app"
+  }
+}

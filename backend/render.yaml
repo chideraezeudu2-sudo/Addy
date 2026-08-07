@@ -1,0 +1,34 @@
+# Render Blueprint for Backend Deployment
+# Deploy this as a Web Service on Render.com
+
+services:
+  - type: web
+    name: addy-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: REDIS_URL
+        fromDatabase:
+          type: redis
+          name: addy-redis
+          connectionString: REDIS_URL
+      - key: POSITIONSTACK_API_KEY
+        sync: false
+      - key: LOCATIONIQ_API_KEY
+        sync: false
+      - key: OPENCAGE_API_KEY
+        sync: false
+      - key: SMARTY_AUTH_ID
+        sync: false
+      - key: SMARTY_AUTH_TOKEN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
