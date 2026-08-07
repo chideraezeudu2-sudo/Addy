@@ -5,9 +5,10 @@ services:
   - type: web
     name: addy-api
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: apt-get update && apt-get install -y gcc libpq-dev && pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     plan: free
+    runtime: python311
     envVars:
       - key: SUPABASE_URL
         sync: false
