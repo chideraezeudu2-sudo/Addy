@@ -1,0 +1,6 @@
+{
+  "name": "Addy",
+  "description": "Address autocomplete, geocoding, deliverability scoring, tax jurisdiction, and timezone API, 80% cheaper than Google Places.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
